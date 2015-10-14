@@ -1,0 +1,37 @@
+{
+  "name": "joker",
+  "version": "0.0.1",
+  "description": "Mocks you.",
+  "main": "joker.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "joker",
+    "http",
+    "mock",
+    "server",
+    "blueprintapi",
+    "blueprint"
+  ],
+  "author": "Rixo <eric@planysphere.fr>",
+  "license": "MIT",
+  "dependencies": {
+    "canned": "^0.3.4",
+    "drafter": "^0.2.8",
+    "drakov": "file:drakov",
+    "dredd": "^1.0.1",
+    "glob": "^5.0.15",
+    "protagonist": "^1.0.0",
+    "q": "^1.4.1",
+    "q-io": "^1.13.1",
+    "request": "^2.65.0"
+  },
+  "devDependencies": {
+    "blueprint-transactions": "0.0.2",
+    "jasmine-core": "^2.3.4",
+    "jasmine-node": "^1.14.5",
+    "node-mocks-http": "^1.4.4",
+    "phantomjs": "^1.9.18"
+  }
+}
