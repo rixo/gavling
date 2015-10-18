@@ -142,3 +142,23 @@ FORMAT: 1A
             ]
         }
 
+
+## Items [/items2{?page}]
+
++ Parameters
+    + page: 1 (optional, number) - The page of questions to return
+
+### List All Items [POST]
+
++ Relation: items
+
++ Request (application/json)
+
+        {"test": true}
+
++ Response 200 (application/vnd.siren+json)
+
+        {
+            "version": 2
+        }
+

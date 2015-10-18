@@ -17,11 +17,16 @@
   "author": "Rixo <eric@planysphere.fr>",
   "license": "MIT",
   "dependencies": {
+    "bluebird": "^2.10.2",
     "canned": "^0.3.4",
     "drafter": "^0.2.8",
-    "drakov": "file:drakov",
+    "drakov": "^0.1.14",
     "dredd": "^1.0.1",
+    "gavel": "^0.5.2",
     "glob": "^5.0.15",
+    "jasmine": "^2.3.2",
+    "lodash": "^3.10.1",
+    "path-to-regexp": "^1.2.1",
     "protagonist": "^1.0.0",
     "q": "^1.4.1",
     "q-io": "^1.13.1",
@@ -29,9 +34,10 @@
   },
   "devDependencies": {
     "blueprint-transactions": "0.0.2",
+    "dyson": "rixo/dyson",
     "jasmine-core": "^2.3.4",
     "jasmine-node": "^1.14.5",
-    "node-mocks-http": "^1.4.4",
+    "node-mocks-http": "rixo/node-mocks-http",
     "phantomjs": "^1.9.18"
   }
 }

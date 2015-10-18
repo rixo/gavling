@@ -1,6 +1,7 @@
 'use strict';
 
 var Q = require('q');
+var Promise = require('bluebird');
 var blueprintTransactions = require('blueprint-transactions');
 var glob = require('glob');
 var request = require('request');
@@ -9,12 +10,18 @@ var url = require('url');
 var Drafter = require('drafter');
 var blueprintUtils = require('dredd/lib/blueprint-utils');
 var handleRuntimeProblems = require('dredd/lib/handle-runtime-problems');
+var urlParser = require('drakov/lib/parse/url');
+var specSchema = require('drakov/lib/spec-schema');
+var content = require('drakov/lib/content');
 var logger = console;
+var _ = require('lodash');
 
 module.exports = {
   expandGlobs: expandGlobs,
   loadFiles: loadFiles,
-  parseBlueprints: parseBlueprints
+  parseBlueprints: parseBlueprints,
+
+  decorateResult: decorateResult
 };
 
 function expandGlobs(path, configDataIsPresent) {
@@ -23,7 +30,7 @@ function expandGlobs(path, configDataIsPresent) {
     path = [path];
   }
 
-  return Q.all(path.map(promiseGlob))
+  return Promise.all(path.map(promiseGlob))
     .then(function(newFiles) {
       return newFiles.reduce(function(list, files) {
         return list.concat(files);
@@ -40,7 +47,7 @@ function expandGlobs(path, configDataIsPresent) {
   ;
 
   function promiseGlob(globToExpand) {
-    return Q.promise(function(resolve, reject) {
+    return new Promise(function(resolve, reject) {
       if (/^http(s)?:\/\//.test(globToExpand)) {
         resolve(globToExpand);
       } else {
@@ -71,7 +78,7 @@ function loadFiles(files, limit) {
     files = files.slice(0, limit);
   }
 
-  return Q.all(files.map(promiseReadFile))
+  return Promise.all(files.map(promiseReadFile))
     .then(function(data) {
       var result = {};
       data.forEach(function(datum) {
@@ -132,11 +139,13 @@ function readLocalFile(filePath, readCallback) {
 }
 
 function parseBlueprints(data) {
-  return Q.all(Object.keys(data).map(make))
+  return Promise
+    .map(Object.keys(data), make)
     .then(makeRuntimes);
 
   function make(file) {
-    return Q.ninvoke(new Drafter, 'make', data[file]['raw'])
+    var drafter = new Drafter;
+    return Promise.promisify(drafter.make).call(drafter, data[file]['raw'])
       .then(function(result) {
         data[file].parsed = result;
         return data[file];
@@ -166,14 +175,33 @@ function parseBlueprints(data) {
     var runtimes = {
       warnings: [],
       errors: [],
-      transactions: []
+      transactions: [],
+      routeMap: {}
     };
+    // REM
+    //var routeMap = runtimes.routeMap;
+
     results.forEach(function(result) {
       var file = result.filename;
       var runtime = blueprintTransactions.compile(result['parsed']['ast'], file);
       runtimes['warnings'] = runtimes['warnings'].concat(runtime['warnings']);
       runtimes['errors'] = runtimes['errors'].concat(runtime['errors']);
       runtimes['transactions'] = runtimes['transactions'].concat(runtime['transactions']);
+
+      // REM
+      //var ast = result.parsed.ast;
+      //ast.resourceGroups.forEach(function(resourceGroup) {
+      //  resourceGroup.resources.forEach(function(resource) {
+      //    var parsedUrl = urlParser.parse(resource.uriTemplate);
+      //    var key = parsedUrl.url;
+      //
+      //    routeMap[key] = routeMap[key] || { urlExpression: key, methods: {} };
+      //    //parseParameters(parsedUrl, resource.parameters, routeMap);
+      //    resource.actions.forEach(function(action){
+      //      parseAction(parsedUrl, action, routeMap);
+      //    });
+      //  });
+      //});
     });
     runtimeError = handleRuntimeProblems(runtimes);
     if (runtimeError) {
@@ -182,4 +210,68 @@ function parseBlueprints(data) {
       return runtimes;
     }
   }
+
+  // REM
+  //function parseAction(parsedUrl, action, routeMap) {
+  //  var key = parsedUrl.url;
+  //
+  //  routeMap[key].methods[action.method] = routeMap[key].methods[action.method] || [];
+  //  var routeHandlers = getRouteHandlers(key, parsedUrl, action);
+  //  Array.prototype.push.apply(routeMap[key].methods[action.method], routeHandlers);
+  //
+  //  console.log('[LOG]'.white, 'Setup Route:', action.method.green, key.yellow, action.name.blue);
+  //
+  //  function getRouteHandlers(method, parsedUrl, action) {
+  //    return action.examples.map(function(example) {
+  //      var specPairs = example.responses.map(function(response, index){
+  //        return {
+  //          response: response,
+  //          request: 'undefined' === typeof example.requests[index]
+  //            ? null
+  //            : specSchema.validateAndParseSchema(example.requests[index])
+  //        };
+  //      });
+  //      return {
+  //        parsedUrl: parsedUrl,
+  //        execute: getResponseHandler(specPairs)
+  //      }
+  //    });
+  //  }
+  //
+  //  function getResponseHandler(specPairs) {
+  //    return function(req, res) {
+  //      return specPairs.some(function(specPair){
+  //        if (content.matches(req, specPair)) {
+  //          logger.log('[GAVLING]'.red, action.method.green, parsedUrl.uriTemplate.yellow, (specPair.request && specPair.request.description ? specPair.request.description : action.name).blue);
+  //
+  //          console.log('pair', specPair)
+  //
+  //          //specPair.response.headers.forEach(function (header) {
+  //          //  res.set(header.name, header.value);
+  //          //});
+  //          //res.status(+specPair.response.name);
+  //          //res.send(buildResponseBody(specPair.response.body));
+  //          return true;
+  //        }
+  //      });
+  //    };
+  //  }
+  //}
+  //
+}
+
+function decorateResult(result, messageGlue, isValid) {
+  var message = [];
+  _.forOwn(result, function(data, resultKey) {
+    if (resultKey !== 'version') {
+      data.results.forEach(function(result) {
+        message.push('[request.' + resultKey + '] ' + result.message);
+      });
+    }
+  });
+  result.message = message.join(messageGlue || "\n");
+
+  result.valid = !!isValid;
+
+  return result;
 }

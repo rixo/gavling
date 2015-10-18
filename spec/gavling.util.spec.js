@@ -3,16 +3,12 @@ describe('gavling.util', function() {
   var path = require('path');
   var testDir = path.join(__dirname, 'gavling-util-test-files');
 
-  function orFail(err) {
-    expect(false).toBe(true);
-  }
-
   describe('expandGlobs', function() {
     it('accepts a single string', function(done) {
       util.expandGlobs(path.join(testDir, '**/*'))
         .then(function(files) {
           expect(files.length).toBe(5);
-        }, orFail)
+        }, this.fail)
         .finally(done)
         .done();
     });
@@ -20,7 +16,7 @@ describe('gavling.util', function() {
       util.expandGlobs(path.join(testDir, '**/*.apib'))
         .then(function(files) {
           expect(files.length).toBe(2);
-        }, orFail)
+        }, this.fail)
         .finally(done)
         .done();
     });
@@ -31,7 +27,7 @@ describe('gavling.util', function() {
       ])
         .then(function(files) {
           expect(files.length).toBe(4);
-        }, orFail)
+        }, this.fail)
         .finally(done)
         .done();
     });
@@ -56,7 +52,7 @@ describe('gavling.util', function() {
       util.loadFiles([filename])
         .then(function(data) {
           expect(Object.keys(data).indexOf(filename)).toBe(0);
-        }, orFail)
+        }, this.fail)
         .finally(done)
         .done();
     });
@@ -68,9 +64,8 @@ describe('gavling.util', function() {
           expect(typeof data[filename]).toBe('object');
           expect(data[filename].filename).toBe(filename);
           expect(typeof data[filename].raw).toBe('string');
-        }, orFail)
-        .finally(done)
-        .done();
+        }, this.fail)
+        .finally(done);
     });
 
     it('reads data from local files', function(done) {
@@ -78,9 +73,8 @@ describe('gavling.util', function() {
       util.loadFiles([filename])
         .then(function(data) {
           expect(data[filename].raw).toBe('Blueprint ipsum apiem sit amet.\n');
-        }, orFail)
-        .finally(done)
-        .done();
+        }, this.fail)
+        .finally(done);
     });
 
     it('reads data from URIs', function(done) {
@@ -88,9 +82,8 @@ describe('gavling.util', function() {
       util.loadFiles([filename])
         .then(function(data) {
           expect(data[filename].raw.indexOf("<title>Example Domain</title>") !== -1).toBe(true);
-        }, orFail)
-        .finally(done)
-        .done();
+        }, this.fail)
+        .finally(done);
     });
   });
 
@@ -100,9 +93,8 @@ describe('gavling.util', function() {
       util.loadFiles([filename])
         .then(function(results) {
           expect(typeof util.parseBlueprints(results).then).toBe('function');
-        }, orFail)
-        .finally(done)
-        .done();
+        }, this.fail)
+        .finally(done);
     });
 
     it('can be chained to util.loadFiles', function(done) {
@@ -117,7 +109,7 @@ describe('gavling.util', function() {
         .then(function(result) {
           expect(result).toBe('resolved');
         })
-        .done(done, done);
+        .finally(done);
     });
 
     it('resolve with an object containing transactions, warnings, and errors', function(done) {
@@ -129,9 +121,8 @@ describe('gavling.util', function() {
           expect(Array.isArray(result.transactions)).toBe(true);
           expect(Array.isArray(result.warnings)).toBe(true);
           expect(Array.isArray(result.errors)).toBe(true);
-        }, orFail)
-        .finally(done)
-        .done();
+        }, this.fail)
+        .finally(done);
     });
 
     it('succeeds in parsing the blueprint', function(done) {
@@ -141,9 +132,8 @@ describe('gavling.util', function() {
         .then(function(result) {
           expect(result.transactions.length).toBe(1);
           expect(result.transactions[0].request.uri).toBe('/message');
-        }, orFail)
-        .finally(done)
-        .done();
+        }, this.fail)
+        .finally(done);
     });
   });
 });
