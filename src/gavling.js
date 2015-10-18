@@ -5,7 +5,7 @@ var urlParser = require('drakov/lib/parse/url'); // this has no drakov deps
 var util = require('./util');
 var validateRequest = require('./validateRequest');
 var validateResponse = require('./validateResponse');
-var createMiddleware = require('./gavling.createMiddleware');
+var createMiddleware = require('./createMiddleware');
 var matchRequest = require('./matchRequest');
 
 module.exports = Gavling;
@@ -62,67 +62,20 @@ function Gavling(options) {
     });
   };
 
-  //this.middleware = function(options) {
-  //  return function(req, res, next) {
-  //    if (middleware) {
-  //      middleware(req, res, next);
-  //    } else {
-  //      me.ready().then(function() {
-  //        middleware = createMiddleware(me.runtime.transactions, options);
-  //        middleware(req, res, next);
-  //      }).done();
-  //    }
-  //  }
-  //};
+  this.middlewarePromise = function(options) {
+    var transactionsPromise = ready().then(function() {
+      return transactions;
+    });
+    return createMiddleware.promise(transactionsPromise, options);;
+  };
+
+  this.middleware = function(options) {
+    var transactionsPromise = ready().then(function() {
+      return transactions;
+    });
+    return createMiddleware.middleware(transactionsPromise, options);
+  };
 }
-
-//function validateRequest(req) {
-//  var me = this;
-//
-//  return me.ready()
-//    //.then(resolveHandlers)
-//    //.then(sortHandlers)
-//    .then(handle);
-//
-//  function handle() {}
-//
-//  function resolveHandlers(runtimes) {
-//    var handlers;
-//    Object.keys(routeMap).some(function(urlPattern) {
-//      var regex = pathToRegexp(urlPattern);
-//
-//      // req.path allows us to delegate query string handling to the route handler functions
-//      var match = regex.exec(req.path);
-//      if (match) {
-//        handlers = routeMap[urlPattern].methods[req.method.toUpperCase()];
-//        return !!handlers;
-//      }
-//    });
-//    if (handlers) {
-//      return handlers;
-//    } else {
-//      throw new Error('No match');
-//    }
-//  }
-//
-//  function sortHandlers(handlers) {
-//    var queryParams = Object.keys(req.query);
-//    if (queryParams.length === 0){
-//      handlers.sort(queryComparator.noParamComparator);
-//    } else {
-//      queryComparator.countMatchingQueryParms(handlers, queryParams);
-//      handlers.sort(queryComparator.queryParameterComparator);
-//    }
-//    return handlers;
-//  }
-//}
-
-//Gavling.prototype.middleware = function(req, res, next) {
-//  this.promise(req, res)
-//    .then(function() {next();})
-//    .catch(res.json)
-//    .done();
-//};
 
 function loadBlueprintTransactions(path) {
   return util.expandGlobs(path)

@@ -260,18 +260,30 @@ function parseBlueprints(data) {
   //
 }
 
-function decorateResult(result, messageGlue, isValid) {
-  var message = [];
+function decorateResult(prefix, result, messageGlue, isValid) {
+  var message = [],
+    warnings = [],
+    errors = [];
   _.forOwn(result, function(data, resultKey) {
     if (resultKey !== 'version') {
       data.results.forEach(function(result) {
-        message.push('[request.' + resultKey + '] ' + result.message);
+        var msg = '[' + prefix + '.' + resultKey + '] ' + result.message;
+        message.push(msg);
+        if (result.severity === 'error') {
+          errors.push(msg);
+        } else if (result.severity === 'warning') {
+          warnings.push(msg);
+        } else {
+          throw new Error("TODO Unexpected severity: " + result.severity);
+        }
       });
     }
   });
-  result.message = message.join(messageGlue || "\n");
 
   result.valid = !!isValid;
+  result.message = message.join(messageGlue || "\n");
+  result.errors = errors;
+  result.warnings = warnings;
 
   return result;
 }

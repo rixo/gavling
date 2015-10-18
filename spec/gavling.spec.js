@@ -151,7 +151,7 @@ describe('Gavling', function() {
         .then(function(result) {
           expect(result.valid).toBe(false);
           expect(result.message).toBe(
-            "[request.headers] Header 'content-type' has value 'application/json' " +
+            "[response.headers] Header 'content-type' has value 'application/json' " +
             "instead of 'application/vnd.siren+json'"
           );
         })
@@ -179,7 +179,7 @@ describe('Gavling', function() {
           expect(result.valid).toBe(false);
           if (result.valid === false) {
             expect(result.message).toBe(
-              "[request.body] At '/version' Missing required property: version"
+              "[response.body] At '/version' Missing required property: version"
             );
           }
         })
@@ -206,41 +206,81 @@ describe('Gavling', function() {
         .then(function(result) {
           expect(result.valid).toBe(false);
           if (!result.valid) {
-            expect(result.message).toBe("[request.statusCode] Status code is not '200'");
+            expect(result.message).toBe("[response.statusCode] Status code is not '200'");
           }
         })
         .done(done);
     });
   });
 
-  describe('Client request validation', function() {
-    describe('matches incoming requests against a request in the blueprint', function() {
+  describe('middlewarePromise', function() {
+    it('intercepts response', function(done) {
+      var promise = gavling.middlewarePromise({
+        request: false
+      });
+      var req = httpMocks.createRequest({
+        method: 'POST',
+        url: '/items2'
+      });
+      var res = httpMocks.createResponse({
+        eventEmitter: require('events').EventEmitter
+      }).set('Content-Type', 'application/vnd.siren+json');
 
+      promise(req, res)
+        .then(function(result) {
+          expect(result.valid).toBe(true);
+        })
+        .done(done);
+
+      res.send(200, JSON.stringify({version: 3}));
     });
-    describe('validates incoming requests against API blueprint', function() {
 
+    it('reports result for request then response if both are validated', function(done) {
+      var promise = gavling.middlewarePromise();
+      var req = httpMocks.createRequest({
+        method: 'POST',
+        url: '/items2',
+        headers: {'Content-Type': 'application/json'},
+        body: '{"test": false}'
+      });
+      var res = httpMocks.createResponse({
+        eventEmitter: require('events').EventEmitter
+      }).set('Content-Type', 'application/vnd.siren+json');
+
+      promise(req, res)
+        .spread(function(reqResult, resResult) {
+          expect(reqResult.valid).toBe(true);
+          expect(resResult.valid).toBe(true);
+        })
+        .done(done);
+
+      res.send(200, JSON.stringify({version: 3}));
     });
-    describe('Option: hook on the current test to report failure', function() {
 
+    it('reports error if response if not valid', function(done) {
+      var onError = jasmine.createSpy();
+      var promise = gavling.middlewarePromise({
+        request: false,
+        onError: onError
+      });
+      var req = httpMocks.createRequest({
+        method: 'POST',
+        url: '/items2'
+      });
+      var res = httpMocks.createResponse({
+        eventEmitter: require('events').EventEmitter
+      }).set('Content-Type', 'application/vnd.siren+json');
+
+      promise(req, res)
+        .then(function(result) {
+          expect(result.valid).toBe(false);
+          expect(onError).toHaveBeenCalledWith(
+            "[response.body] At '/version' Missing required property: version"
+          );
+        })
+        .done(done);
+
+      res.send(200, JSON.stringify({version_x: 3}));
     });
-  });
-
-  describe('Server response validation', function() {
-    describe('against mock server', function() {
-
-    });
-    //describe('against real server', function() {
-    //  describe('- record client requests (ideally during client automatised tests)', function() {
-    //    /**
-    //     * - group logs by 'scenario' (needs to hook in the current test runner)
-    //     *     - client side karma+jasmine
-    //     *     - server side protractor
-    //     *     - server side jasmine-node
-    //     */
-    //  });
-    //  describe('- playback ', function() {
-    //
-    //  });
-    //});
   });
 });

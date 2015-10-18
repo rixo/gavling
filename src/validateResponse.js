@@ -27,7 +27,7 @@ module.exports = function validateResponse(res, body, transaction) {
         };
       } else {
         return gavel.validateAsync(real, expected, 'response')
-          .tap(decorateResult);
+          .tap(decorateResult.bind(this, 'response'));
       }
     })
   ;
