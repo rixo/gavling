@@ -30,9 +30,10 @@ function Gavling(options) {
     .then(function(runtimes) {
       // TODO process warnings & error
       if (runtimes.errors.length || runtimes.warnings.length) {
-        console.log('runtimes.errors', runtimes.errors)
-        console.log('runtimes.warnings', runtimes.warnings)
-        throw new Error('TODO');
+        // They are already output by drafter
+        //console.log('runtimes.errors', runtimes.errors)
+        //console.log('runtimes.warnings', runtimes.warnings)
+        //throw new Error('TODO');
       }
       return runtimes.transactions;
     })

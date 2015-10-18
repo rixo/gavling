@@ -9,7 +9,7 @@ module.exports = function validateResponse(res, body, transaction) {
 
   var real = {
     statusCode: res.statusCode,
-    headers: res._getHeaders(),
+    headers: res._headers,
     body: body
   };
 

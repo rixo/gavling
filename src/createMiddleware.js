@@ -15,7 +15,22 @@ module.exports = {
 function createMiddleware(transactionsOrPromise, options) {
   return function(req, res, next) {
     var handler = createMiddlewarePromise(transactionsOrPromise, options);
-    handler(req, res);
+    // we need to keep a copy as early as possible, to avoid bodyParser etc.
+    // to change the body type
+    var copy = {
+      path: req.path,
+      method: req.method,
+      uri: req.uri,
+      headers: req.headers,
+      body: req.body
+    };
+    handler(copy, res)
+        .catch(function(err) {
+          if (!/^Request does not match any spec: /.test(String(err))) {
+            throw err;
+          }
+        })
+        .done();
     next();
   }
 }
@@ -23,10 +38,19 @@ function createMiddleware(transactionsOrPromise, options) {
 function createMiddlewarePromise(transactionsOrPromise, options) {
   options = _.extend({
     request: true,
-    response: true
+    response: true,
+    ignoreOptions: true
   }, options);
 
   return function(req, res) {
+    if (options.ignoreOptions && req.method.toUpperCase() === 'OPTIONS') {
+      return Promise.resolve([{
+        skipped: true
+      },{
+        skipped: true
+      }]);
+    }
+
     var responseBodyPromise = captureResponse(res);
 
     return Promise.resolve(transactionsOrPromise)
@@ -39,7 +63,8 @@ function createMiddlewarePromise(transactionsOrPromise, options) {
         if (transaction) {
           return transaction;
         } else {
-          throw new Error("Request does not match any spec", req);
+          error("Request does not match any spec: " + nameRequest());
+          return Promise.reject("Request does not match any spec");
         }
       } else {
         return null;
@@ -71,49 +96,82 @@ function createMiddlewarePromise(transactionsOrPromise, options) {
     function doValidateRequest(transaction) {
       return validateRequest(req, transaction)
         .then(function(result) {
-          if (!result.valid) {
-            result.errors.forEach(error);
-            result.warnings.forEach(warning);
+          if (result.valid) {
+            success.bind(this, "Request for");
+          } else {
+            result.errors.forEach(function(err, i) {
+              error(["Request for", nameRequest(),
+                "is invalid" + (i > 0 ? '('+(i+1)+')' : '') + ":"
+                , err
+              ].join(' '));
+            });
+            // TODO warnings
+            //result.warnings.forEach(warning.bind(this, "Request for"));
           }
           return result;
-        }, function(err) {
-          error("Cannot validate request", err);
+        //}, function(err) {
+        //  error("Cannot validate request", err);
         });
     }
 
     function doValidateResponse(transaction, body) {
       return validateResponse(res, body, transaction)
         .then(function(result) {
-          if (!result.valid) {
-            result.errors.forEach(error);
-            result.warnings.forEach(warning);
+          if (result.valid) {
+            success.bind(this, "Request for");
+          } else {
+            result.errors.forEach(function(err, i) {
+              error(["Response for", nameRequest(),
+                "is invalid" + (i > 0 ? '('+(i+1)+')' : '') + ":"
+                , err
+              ].join(' '));
+            });
+            // TODO warnings
+            //result.warnings.forEach(warning.bind(this, "Response for"));
           }
           return result;
-        }, function(err) {
-          error("Cannot validate response", err);
+        //}, function(err) {
+        //  error("Cannot validate response", err);
         });
     }
+
+    function nameRequest() {
+      return req.method + ' ' + req.path;
+    }
+
+    function error(message) {
+      //var message = [prefix, req.method, req.path, "is not valid:", message].join(' ');
+      if (options.onError) {
+        options.onError(message);
+      } else if (options.onReport) {
+        options.onReport('error', message);
+      } else {
+        logger.error(message);
+      }
+    }
+
+    function warning(prefix, err) {
+      var message = [prefix, req.method, req.path, "is not valid:", err].join(' ');
+      if (options.onWarning) {
+        options.onWarning(message);
+      } else if (options.onReport) {
+        options.onReport('warning', message);
+      } else {
+        logger.warning(message);
+      }
+    }
+
+    function success(prefix) {
+      var message = [prefix, req.method, req.path, "is valid"].join(' ');
+      if (options.onSuccess) {
+        options.onSuccess(message);
+      } else if (options.onReport) {
+        options.onReport('info', message);
+      } else {
+        logger.success(message);
+      }
+    }
   };
-
-  function error(err) {
-    if (options.onError) {
-      options.onError(err);
-    } else if (options.onReport) {
-      options.onReport('error', err);
-    } else {
-      logger.error("Validation error:", err);
-    }
-  }
-
-  function warning(warn) {
-    if (options.onWarning) {
-      options.onWarning(warn);
-    } else if (options.onReport) {
-      options.onReport('warning', warn);
-    } else {
-      logger.warning("Validation warning:", warn);
-    }
-  }
 }
 
 function captureResponse(res) {
@@ -126,7 +184,11 @@ function captureResponse(res) {
       reject(new Error("Could not capture response, with error:", error));
     });
     // TODO confirm this is the event
-    res.once('end', function() {
+    // (this was not the right one apparently)
+    //res.once('end', function() {
+    //  resolve(buffer.join(''));
+    //});
+    res.once('finish', function() {
       resolve(buffer.join(''));
     });
   });

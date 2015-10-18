@@ -275,7 +275,7 @@ describe('Gavling', function() {
         .then(function(result) {
           expect(result.valid).toBe(false);
           expect(onError).toHaveBeenCalledWith(
-            "[response.body] At '/version' Missing required property: version"
+            "Response for POST /items2 is invalid: [response.body] At '/version' Missing required property: version"
           );
         })
         .done(done);
