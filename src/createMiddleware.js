@@ -15,16 +15,7 @@ module.exports = {
 function createMiddleware(transactionsOrPromise, options) {
   return function(req, res, next) {
     var handler = createMiddlewarePromise(transactionsOrPromise, options);
-    // we need to keep a copy as early as possible, to avoid bodyParser etc.
-    // to change the body type
-    var copy = {
-      path: req.path,
-      method: req.method,
-      uri: req.uri,
-      headers: req.headers,
-      body: req.body
-    };
-    handler(copy, res)
+    handler(req, res)
         .catch(function(err) {
           if (!/^Request does not match any spec: /.test(String(err))) {
             throw err;
@@ -42,14 +33,24 @@ function createMiddlewarePromise(transactionsOrPromise, options) {
     ignoreOptions: true
   }, options);
 
-  return function(req, res) {
-    if (options.ignoreOptions && req.method.toUpperCase() === 'OPTIONS') {
+  return function(origReq, res) {
+    if (options.ignoreOptions && origReq.method.toUpperCase() === 'OPTIONS') {
       return Promise.resolve([{
         skipped: true
       },{
         skipped: true
       }]);
     }
+
+    // we need to keep a copy as early as possible, to avoid bodyParser etc.
+    // to change the body type
+    var req = {
+      path: origReq.path,
+      method: origReq.method,
+      uri: origReq.uri,
+      headers: origReq.headers,
+      body: origReq.body
+    };
 
     var responseBodyPromise = captureResponse(res);
 
@@ -61,6 +62,7 @@ function createMiddlewarePromise(transactionsOrPromise, options) {
       if (options.request || options.response) {
         var transaction = matchRequest(req, transactions);
         if (transaction) {
+          success(nameRequest() + " matches " + transaction.name);
           return transaction;
         } else {
           error("Request does not match any spec: " + nameRequest());
@@ -97,7 +99,7 @@ function createMiddlewarePromise(transactionsOrPromise, options) {
       return validateRequest(req, transaction)
         .then(function(result) {
           if (result.valid) {
-            success.bind(this, "Request for");
+            success("Request for " + nameRequest() + " is valid!");
           } else {
             result.errors.forEach(function(err, i) {
               error(["Request for", nameRequest(),
@@ -118,7 +120,7 @@ function createMiddlewarePromise(transactionsOrPromise, options) {
       return validateResponse(res, body, transaction)
         .then(function(result) {
           if (result.valid) {
-            success.bind(this, "Request for");
+            success("Response for " + nameRequest() + " is valid!");
           } else {
             result.errors.forEach(function(err, i) {
               error(["Response for", nameRequest(),
@@ -161,14 +163,14 @@ function createMiddlewarePromise(transactionsOrPromise, options) {
       }
     }
 
-    function success(prefix) {
-      var message = [prefix, req.method, req.path, "is valid"].join(' ');
+    function success(message) {
+      //var message = [prefix, req.method, req.path, "is valid"].join(' ');
       if (options.onSuccess) {
         options.onSuccess(message);
       } else if (options.onReport) {
         options.onReport('info', message);
       } else {
-        logger.success(message);
+        logger.info(message);
       }
     }
   };
@@ -176,20 +178,45 @@ function createMiddlewarePromise(transactionsOrPromise, options) {
 
 function captureResponse(res) {
   return new Promise(function(resolve, reject) {
-    var buffer = [];
-    res.on('data', function(data) {
-      buffer.push(data);
-    });
-    res.on('error', function(error) {
-      reject(new Error("Could not capture response, with error:", error));
-    });
-    // TODO confirm this is the event
-    // (this was not the right one apparently)
-    //res.once('end', function() {
-    //  resolve(buffer.join(''));
-    //});
-    res.once('finish', function() {
-      resolve(buffer.join(''));
-    });
+    var oldWrite = res.write,
+        oldEnd = res.end;
+
+    var chunks = [];
+
+    res.write = function (chunk) {
+      chunks.push(chunk);
+
+      oldWrite.apply(res, arguments);
+    };
+
+    res.end = function (chunk) {
+      if (chunk)
+        chunks.push(chunk);
+
+      var body = Buffer.concat(chunks).toString('utf8');
+
+      oldEnd.apply(res, arguments);
+
+      resolve(body);
+    };
   });
+  //return new Promise(function(resolve, reject) {
+  //  var buffer = '';
+  //  res.on('data', function(chunk) {
+  //    console.log('data>', buffer, chunk);
+  //    buffer += chunk;
+  //  });
+  //  res.on('error', function(error) {
+  //    reject(new Error("Could not capture response, with error:", error));
+  //  });
+  //  // TODO confirm this is the event
+  //  // (this was not the right one apparently)
+  //  //res.once('end', function() {
+  //  //  resolve(buffer.join(''));
+  //  //});
+  //  res.once('finish', function() {
+  //    console.log(buffer);
+  //    resolve(buffer);
+  //  });
+  //});
 }
