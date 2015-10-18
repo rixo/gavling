@@ -2,7 +2,7 @@
 
 var flattenHeaders = require('dredd/lib/flatten-headers');
 var gavel = require('gavel');
-var decorateResult = require('./gavling.util').decorateResult;
+var decorateResult = require('./util').decorateResult;
 
 module.exports = function validateResponse(res, body, transaction) {
   var transactionResponse = transaction.response;

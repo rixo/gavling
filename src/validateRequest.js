@@ -3,7 +3,7 @@
 var Promise = require('bluebird');
 var flattenHeaders = require('dredd/lib/flatten-headers');
 var gavel = Promise.promisifyAll(require('gavel'));
-var decorateResult = require('./gavling.util').decorateResult;
+var decorateResult = require('./util').decorateResult;
 
 module.exports = function validateRequest(req, transaction) {
   var transactionRequest = transaction.request;

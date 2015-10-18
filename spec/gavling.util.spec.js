@@ -1,5 +1,5 @@
 describe('gavling.util', function() {
-  var util = require('../src/gavling.util');
+  var util = require('../src/util');
   var path = require('path');
   var testDir = path.join(__dirname, 'gavling-util-test-files');
 

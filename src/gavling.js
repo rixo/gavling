@@ -2,7 +2,7 @@
 
 var Promise = require('bluebird');
 var urlParser = require('drakov/lib/parse/url'); // this has no drakov deps
-var util = require('./gavling.util');
+var util = require('./util');
 var validateRequest = require('./validateRequest');
 var validateResponse = require('./validateResponse');
 var createMiddleware = require('./gavling.createMiddleware');
