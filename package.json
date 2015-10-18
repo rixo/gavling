@@ -18,6 +18,7 @@
   "license": "MIT",
   "dependencies": {
     "bluebird": "^2.10.2",
+    "blueprint-transactions": "0.0.2",
     "canned": "^0.3.4",
     "drafter": "^0.2.8",
     "drakov": "^0.1.14",
@@ -33,7 +34,6 @@
     "request": "^2.65.0"
   },
   "devDependencies": {
-    "blueprint-transactions": "0.0.2",
     "dyson": "rixo/dyson",
     "jasmine-core": "^2.3.4",
     "jasmine-node": "^1.14.5",
